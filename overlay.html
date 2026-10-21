@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Overlay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #ff4655;
+            --primary-glow: rgba(255, 70, 85, 0.4);
+            --text-color: #ffffff;
+            --card-bg: rgba(15, 20, 31, 0.85);
+            --border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-color); }
+
+        body {
+            width: 1920px;
+            height: 1080px;
+            background-color: #080a0f !important;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            grid-template-rows: 95px 1fr;
+            gap: 20px;
+            padding: 30px;
+            position: relative;
+        }
+
+        #particleCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .header-container {
+            grid-column: 1 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+            background: var(--card-bg) !important;
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 0 32px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        }
+
+        .main-title {
+            font-size: 48px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            text-transform: uppercase;
+            filter: drop-shadow(0 0 20px rgba(255, 70, 85, 0.7));
+            text-align: center;
+        }
+
+        .anim-pulse {
+            animation: pulseGlow 2.5s infinite ease-in-out;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 15px rgba(255, 70, 85, 0.6)); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 30px rgba(255, 70, 85, 0.95)); transform: scale(1.01); }
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            z-index: 10;
+            height: 100%;
+        }
+
+        .camera-container {
+            flex: 1;
+            background: transparent;
+            border: 2px dashed rgba(255, 70, 85, 0.7);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .camera-container.obs-chroma {
+            background: #00FF00 !important; 
+        }
+
+        .camera-placeholder {
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255,255,255,0.6);
+            font-weight: 600;
+        }
+
+        .socials-bar {
+            background: var(--card-bg) !important;
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            height: 70px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        }
+
+        .social-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .social-item span.platform {
+            color: var(--primary);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            background: rgba(255,255,255,0.05);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .sidebar-right {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 10;
+            height: 100%;
+        }
+
+        .chat-container {
+            flex: 1;
+            background: var(--card-bg) !important;
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        }
+
+        .chat-header {
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 800;
+            font-size: 15px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Sadece index içinde ön izlenirken görünür, OBS'te görünmez */
+        .chat-placeholder {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255,255,255,0.3);
+            font-size: 14px;
+            padding: 20px;
+            text-align: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="particleCanvas"></canvas>
+
+    <header class="header-container">
+        <h1 class="main-title anim-pulse" id="displayTitle">MAÇ ARANIYOR</h1>
+    </header>
+
+    <main class="main-content">
+        <div class="camera-container" id="cameraContainer">
+            <div class="camera-placeholder" id="camPlaceholder">
+                <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                <span>ŞEFFAF KAMERA ALANI</span>
+            </div>
+        </div>
+        <div class="socials-bar" id="socialsBar"></div>
+    </main>
+
+    <aside class="sidebar-right">
+        <div class="chat-container">
+            <div class="chat-header">💬 CANLI SOHBET</div>
+            <div class="chat-placeholder" id="chatPlaceholder">
+                <i class="fa-regular fa-comments" style="font-size: 28px; opacity: 0.2;"></i>
+                <span>Görsel Sohbet Paneli</span>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.get('preview') === 'true') {
+            document.getElementById('camPlaceholder').style.display = 'flex';
+            document.getElementById('chatPlaceholder').style.display = 'flex';
+        } else {
+            document.getElementById('cameraContainer').classList.add('obs-chroma');
+        }
+
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let currentThemeColor = '#ff4655';
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.4;
+                this.speedY = (Math.random() - 0.5) * 0.4;
+                this.opacity = Math.random() * 0.5 + 0.1;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+            draw() {
+                ctx.fillStyle = currentThemeColor;
+                ctx.globalAlpha = this.opacity;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            const count = Math.floor((canvas.width * canvas.height) / 15000);
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+        }
+        initParticles();
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        if (params.get('primary')) {
+            currentThemeColor = params.get('primary');
+            document.documentElement.style.setProperty('--primary', currentThemeColor);
+            document.documentElement.style.setProperty('--primary-glow', currentThemeColor + '66');
+        }
+        if (params.get('text')) {
+            document.documentElement.style.setProperty('--text-color', params.get('text'));
+        }
+
+        if (params.get('title')) document.getElementById('displayTitle').innerText = params.get('title');
+        
+        const titleEl = document.getElementById('displayTitle');
+        const animActive = params.get('animActive');
+        if (animActive === 'false') {
+            titleEl.classList.remove('anim-pulse');
+        } else {
+            titleEl.classList.add('anim-pulse');
+        }
+
+        const socialsParam = params.get('socials');
+        const socialsBar = document.getElementById('socialsBar');
+        socialsBar.innerHTML = '';
+
+        if (socialsParam) {
+            const list = socialsParam.split(',');
+            list.forEach(item => {
+                const [platform, handle] = item.split(':');
+                if (platform && handle) {
+                    const div = document.createElement('div');
+                    div.className = 'social-item';
+                    div.innerHTML = `<span class="platform">${platform}</span> <span>${handle}</span>`;
+                    socialsBar.appendChild(div);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

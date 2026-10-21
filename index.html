@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Overlay Maker - Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #ff4655;
+            --primary-glow: rgba(255, 70, 85, 0.4);
+            --text-color: #ffffff;
+            --bg-color: #080a0f;
+            --card-bg: rgba(15, 20, 31, 0.85);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg-color); color: #fff; height: 100vh; overflow: hidden; display: flex; }
+
+        .panel-content::-webkit-scrollbar { width: 8px; }
+        .panel-content::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+        .panel-content::-webkit-scrollbar-thumb { background: rgba(255, 70, 85, 0.3); border-radius: 4px; border: 1px solid rgba(255, 70, 85, 0.1); }
+        .panel-content::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        .preview-section {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 30% 30%, rgba(255,70,85,0.15) 0%, transparent 60%);
+            overflow: hidden;
+        }
+
+        .preview-header {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .preview-title { font-size: 16px; font-weight: 800; color: #a0a5b5; letter-spacing: 1px; }
+
+        .viewport-wrapper {
+            width: 100%;
+            max-width: 1100px;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid var(--border);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        iframe {
+            width: 1920px;
+            height: 1080px;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: top left;
+        }
+
+        .sidebar-panel {
+            width: 440px;
+            background: #0b0e14;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            z-index: 10;
+        }
+
+        .panel-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .panel-header i { font-size: 20px; color: var(--primary); }
+        .panel-header h2 { font-size: 18px; font-weight: 800; }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group label { font-size: 13px; font-weight: 600; color: #a0a5b5; }
+        .form-group input {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 10px;
+            color: #fff;
+            outline: none;
+            font-size: 14px;
+        }
+        .form-group input:focus { border-color: var(--primary); }
+
+        .switch-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: 10px;
+        }
+        .switch-group label { font-size: 13px; font-weight: 600; color: #fff; }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.15);
+            transition: .3s;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 16px; width: 16px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary); border-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .color-pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .color-picker-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); }
+        .color-picker-item input[type="color"] { width: 32px; height: 32px; border: none; background: none; cursor: pointer; }
+
+        .social-inputs { display: flex; flex-direction: column; gap: 12px; }
+        .social-row-wrapper {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .social-fields { display: flex; gap: 8px; align-items: center; }
+        .social-field-group { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .social-field-group label { font-size: 11px; font-weight: 700; color: #8892b0; text-transform: uppercase; }
+        .social-field-group input {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 8px;
+            color: #fff;
+            outline: none;
+            font-size: 13px;
+            width: 100%;
+        }
+        .btn-remove {
+            background: rgba(255, 71, 87, 0.15);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            color: #ff4757;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 18px;
+            transition: all 0.2s;
+        }
+        .btn-remove:hover { background: #ff4757; color: #fff; }
+
+        .btn-add {
+            background: rgba(255,255,255,0.05);
+            border: 1px dashed var(--border);
+            color: #fff;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .btn-add:hover { border-color: var(--primary); color: var(--primary); background: rgba(255,70,85,0.05); }
+
+        .panel-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border);
+            background: rgba(0,0,0,0.3);
+        }
+
+        .btn-copy {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: #fff;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(255,70,85,0.3);
+        }
+        .btn-copy:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+    <div class="preview-section">
+        <div class="preview-header">
+            <div class="preview-title">CANLI ÖN İZLEME (1920x1080)</div>
+        </div>
+        <div class="viewport-wrapper" id="viewport">
+            <iframe id="previewFrame" src="overlay.html?preview=true"></iframe>
+        </div>
+    </div>
+
+    <aside class="sidebar-panel">
+        <div class="panel-header">
+            <i class="fa-solid fa-gear"></i>
+            <h2>OVERLAY AYARLARI</h2>
+        </div>
+
+        <div class="panel-content">
+            <div class="section-title">Metinler & Efekt</div>
+            <div class="form-group">
+                <label>Ana Başlık</label>
+                <input type="text" id="titleInput" value="BLACKJAZ">
+            </div>
+            
+            <div class="switch-group">
+                <label>Başlık Nabız Animasyonu</label>
+                <label class="switch">
+                    <input type="checkbox" id="animToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="section-title">Renk Paleti</div>
+            <div class="color-pickers">
+                <div class="color-picker-item">
+                    <input type="color" id="primaryColor" value="#ff4655">
+                    <label>Tema Rengi</label>
+                </div>
+                <div class="color-picker-item">
+                    <input type="color" id="textColor" value="#ffffff">
+                    <label>Yazı Rengi</label>
+                </div>
+            </div>
+
+            <div class="section-title">Sosyal Medya (Max 5)</div>
+            <div class="social-inputs" id="socialContainer"></div>
+            <button class="btn-add" id="addSocialBtn"><i class="fa-solid fa-plus mr-1"></i> Sosyal Medya Ekle</button>
+        </div>
+
+        <div class="panel-footer">
+            <button class="btn-copy" id="copyUrlBtn">🔗 OBS İÇİN BİREBİR LİNKİ KOPYALA</button>
+        </div>
+    </aside>
+
+    <script>
+        const previewFrame = document.getElementById('previewFrame');
+        const viewport = document.getElementById('viewport');
+
+        function resizeIframe() {
+            if (!viewport || !previewFrame) return;
+            const scale = viewport.clientWidth / 1920;
+            previewFrame.style.transform = `scale(${scale})`;
+        }
+        window.addEventListener('resize', resizeIframe);
+        previewFrame.addEventListener('load', resizeIframe);
+        resizeIframe();
+
+        const socialContainer = document.getElementById('socialContainer');
+        const addSocialBtn = document.getElementById('addSocialBtn');
+        let socialCount = 0;
+
+        function addSocialRow(platform = '', handle = '') {
+            if (socialCount >= 5) return;
+            socialCount++;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'social-row-wrapper';
+            wrapper.innerHTML = `
+                <div class="social-fields">
+                    <div class="social-field-group">
+                        <label>Platform</label>
+                        <input type="text" class="social-platform" value="${platform}" placeholder="Örn: Instagram">
+                    </div>
+                    <div class="social-field-group">
+                        <label>Kullanıcı Adı</label>
+                        <input type="text" class="social-handle" value="${handle}" placeholder="Örn: @kullanici">
+                    </div>
+                    <button class="btn-remove" type="button" title="Sil"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `;
+
+            wrapper.querySelector('.btn-remove').addEventListener('click', () => {
+                wrapper.remove();
+                socialCount--;
+                updateOverlay();
+            });
+
+            wrapper.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', updateOverlay);
+            });
+
+            socialContainer.appendChild(wrapper);
+            updateOverlay();
+        }
+
+        addSocialBtn.addEventListener('click', () => addSocialRow());
+        addSocialRow('Twitch', 'Blackjaz');
+        addSocialRow('KICK', 'Blackjaz');
+        addSocialRow('Instagram', 'HeyRidvan');
+
+        function buildQueryString(isPreview = false) {
+            const title = encodeURIComponent(document.getElementById('titleInput').value);
+            const animActive = document.getElementById('animToggle').checked ? 'true' : 'false';
+            const primary = encodeURIComponent(document.getElementById('primaryColor').value);
+            const text = encodeURIComponent(document.getElementById('textColor').value);
+
+            const socials = [];
+            document.querySelectorAll('.social-row-wrapper').forEach(wrapper => {
+                const inputs = wrapper.querySelectorAll('input');
+                const p = inputs[0].value.trim();
+                const h = inputs[1].value.trim();
+                if (p && h) {
+                    socials.push(`${p}:${h}`);
+                }
+            });
+            const socialsParam = encodeURIComponent(socials.join(','));
+
+            let q = `?title=${title}&animActive=${animActive}&primary=${primary}&text=${text}&socials=${socialsParam}`;
+            if (isPreview) q += `&preview=true`;
+            return q;
+        }
+
+        function updateOverlay() {
+            previewFrame.src = 'overlay.html' + buildQueryString(true);
+        }
+
+        document.querySelectorAll('.sidebar-panel input').forEach(element => {
+            if(!element.classList.contains('social-platform') && !element.classList.contains('social-handle')) {
+                element.addEventListener('input', updateOverlay);
+                element.addEventListener('change', updateOverlay);
+            }
+        });
+        document.getElementById('animToggle').addEventListener('change', updateOverlay);
+
+        document.getElementById('copyUrlBtn').addEventListener('click', () => {
+            const baseUrl = window.location.href.replace('index.html', '').split('?')[0];
+            const fullOverlayUrl = baseUrl + 'overlay.html' + buildQueryString(false);
+            
+            navigator.clipboard.writeText(fullOverlayUrl).then(() => {
+                alert('OBS Linki Başarıyla Kopyalandı!\n\nBu linki OBS Tarayıcı Kaynağına yapıştırabilirsiniz.');
+            });
+        });
+    </script>
+</body>
+</html>
